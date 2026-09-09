@@ -5,4 +5,5 @@ type User struct {
 	Email           string  `gorm:"uniqueIndex;type:varchar(255);not null"`
 	PasswordHash    *string `gorm:"type:varchar(255)"`
 	IsEmailVerified bool    `gorm:"not null;default:false"`
+	Timezone        string  `gorm:"type:varchar(50);not null;default:'UTC'"`
 }

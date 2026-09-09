@@ -7,8 +7,9 @@ type SendOTPRequest struct {
 }
 
 type VerifyOTPRequest struct {
-	Email string `json:"email" binding:"required,email"`
-	Code  string `json:"code" binding:"required,len=6"`
+	Email    string `json:"email" binding:"required,email"`
+	Code     string `json:"code" binding:"required,len=6"`
+	Timezone string `json:"timezone" binding:"required"`
 }
 
 type LoginRequest struct {
@@ -37,4 +38,8 @@ type MessageResponse struct {
 
 type ErrorResponse struct {
 	Error string `json:"error"`
+}
+
+type ValidationErrorResponse struct {
+	Errors map[string]string `json:"errors"`
 }

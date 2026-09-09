@@ -12,6 +12,7 @@ type UserRepository interface {
 	Create(user *entity.User) error
 	UpdatePassword(id uuid.UUID, passwordHash string) error
 	MarkEmailVerified(id uuid.UUID) error
+	UpdateTimezone(id uuid.UUID, timezone string) error
 }
 
 type userRepository struct {
@@ -50,4 +51,8 @@ func (r *userRepository) UpdatePassword(id uuid.UUID, passwordHash string) error
 
 func (r *userRepository) MarkEmailVerified(id uuid.UUID) error {
 	return r.db.Model(&entity.User{}).Where("id = ?", id).Update("is_email_verified", true).Error
+}
+
+func (r *userRepository) UpdateTimezone(id uuid.UUID, timezone string) error {
+	return r.db.Model(&entity.User{}).Where("id = ?", id).Update("timezone", timezone).Error
 }
