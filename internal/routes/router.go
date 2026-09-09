@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRouter(authController *controller.AuthController, tokenService service.TokenService) *gin.Engine {
+func SetupRouter(authController *controller.AuthController, userController *controller.UserController, tokenService service.TokenService) *gin.Engine {
 	router := gin.Default()
 
 	router.Use(cors.New(cors.Config{
@@ -20,6 +20,7 @@ func SetupRouter(authController *controller.AuthController, tokenService service
 	api := router.Group("/api/v1")
 
 	RegisterAuthRoutes(api, authController, tokenService)
+	RegisterUserRoutes(api, userController, tokenService)
 
 	return router
 }

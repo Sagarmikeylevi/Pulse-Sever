@@ -12,7 +12,6 @@ import (
 	"github.com/Sagarmikeylevi/Pulse-Sever/internal/shared"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 )
 
 var (
@@ -36,7 +35,8 @@ type AuthTokens struct {
 
 type AuthService interface {
 	SendOTP(email string) error
-	VerifyOTP(email string, code string) (*AuthTokens, error)
+	VerifyOTP(email string, code string) error
+	GenerateTokens(user *entity.User) (*AuthTokens, error)
 	LoginWithPassword(email string, password string) (*AuthTokens, error)
 	SetPassword(userID uuid.UUID, password string) error
 	RefreshToken(rawRefreshToken string) (*AuthTokens, error)
@@ -110,51 +110,37 @@ func (s *authService) SendOTP(email string) error {
 	return nil
 }
 
-// VerifyOTP verifies the OTP code. If valid, creates user (if new) and returns tokens.
-func (s *authService) VerifyOTP(email string, code string) (*AuthTokens, error) {
+// VerifyOTP verifies the OTP code and marks it as used.
+func (s *authService) VerifyOTP(email string, code string) error {
 	otp, err := s.otpRepo.FindLatestActiveByEmail(email)
 	if err != nil {
-		return nil, ErrInvalidOTP
+		return ErrInvalidOTP
 	}
 
 	// Check expiry
 	if time.Now().After(otp.ExpiresAt) {
-		return nil, ErrOTPExpired
+		return ErrOTPExpired
 	}
 
 	// Check max attempts
 	if otp.Attempts >= 3 {
-		return nil, ErrOTPMaxAttempts
+		return ErrOTPMaxAttempts
 	}
 
 	// Verify the code
 	if err := bcrypt.CompareHashAndPassword([]byte(otp.CodeHash), []byte(code)); err != nil {
 		_ = s.otpRepo.IncrementAttempts(otp)
-		return nil, ErrInvalidOTP
+		return ErrInvalidOTP
 	}
 
 	// Mark OTP as used
 	_ = s.otpRepo.MarkAsUsed(otp)
 
-	// Find or create user
-	user, err := s.userRepo.FindByEmail(email)
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		user = &entity.User{
-			Email:           email,
-			IsEmailVerified: true,
-		}
-		if err := s.userRepo.Create(user); err != nil {
-			return nil, fmt.Errorf("failed to create user: %w", err)
-		}
-	} else if err != nil {
-		return nil, fmt.Errorf("failed to find user: %w", err)
-	} else {
-		// Existing user — ensure email is marked verified
-		if !user.IsEmailVerified {
-			_ = s.userRepo.MarkEmailVerified(user.ID)
-		}
-	}
+	return nil
+}
 
+// GenerateTokens creates a new access + refresh token pair for the given user.
+func (s *authService) GenerateTokens(user *entity.User) (*AuthTokens, error) {
 	return s.generateTokenPair(user)
 }
 

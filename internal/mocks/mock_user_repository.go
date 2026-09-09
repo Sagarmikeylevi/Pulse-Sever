@@ -40,3 +40,8 @@ func (m *MockUserRepository) MarkEmailVerified(id uuid.UUID) error {
 	args := m.Called(id)
 	return args.Error(0)
 }
+
+func (m *MockUserRepository) UpdateTimezone(id uuid.UUID, timezone string) error {
+	args := m.Called(id, timezone)
+	return args.Error(0)
+}

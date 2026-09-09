@@ -88,8 +88,8 @@ func TestSendOTP_CooldownExpired(t *testing.T) {
 
 // ==================== VerifyOTP Tests ====================
 
-func TestVerifyOTP_Success_NewUser(t *testing.T) {
-	authSvc, userRepo, otpRepo, refreshTokenRepo, tokenSvc, _ := newTestAuthService()
+func TestVerifyOTP_Success(t *testing.T) {
+	authSvc, _, otpRepo, _, _, _ := newTestAuthService()
 
 	codeHash, _ := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.DefaultCost)
 	otp := &entity.OTP{
@@ -104,51 +104,11 @@ func TestVerifyOTP_Success_NewUser(t *testing.T) {
 
 	otpRepo.On("FindLatestActiveByEmail", "sagar@test.com").Return(otp, nil)
 	otpRepo.On("MarkAsUsed", otp).Return(nil)
-	userRepo.On("FindByEmail", "sagar@test.com").Return(nil, gorm.ErrRecordNotFound)
-	userRepo.On("Create", mock.AnythingOfType("*entity.User")).Return(nil)
-	tokenSvc.On("GenerateAccessToken", mock.AnythingOfType("service.TokenClaims")).Return("access-token", nil)
-	tokenSvc.On("GenerateRefreshToken").Return("raw-refresh", "hashed-refresh", nil)
-	refreshTokenRepo.On("Create", mock.AnythingOfType("*entity.RefreshToken")).Return(nil)
 
-	tokens, err := authSvc.VerifyOTP("sagar@test.com", "123456")
+	err := authSvc.VerifyOTP("sagar@test.com", "123456")
 
 	assert.NoError(t, err)
-	assert.Equal(t, "access-token", tokens.AccessToken)
-	assert.Equal(t, "raw-refresh", tokens.RefreshToken)
-	userRepo.AssertCalled(t, "Create", mock.AnythingOfType("*entity.User"))
-}
-
-func TestVerifyOTP_Success_ExistingUser(t *testing.T) {
-	authSvc, userRepo, otpRepo, refreshTokenRepo, tokenSvc, _ := newTestAuthService()
-
-	codeHash, _ := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.DefaultCost)
-	otp := &entity.OTP{
-		ID:        uuid.New(),
-		Email:     "sagar@test.com",
-		CodeHash:  string(codeHash),
-		Attempts:  0,
-		Status:    entity.OTPStatusActive,
-		ExpiresAt: time.Now().Add(5 * time.Minute),
-		CreatedAt: time.Now(),
-	}
-	existingUser := &entity.User{
-		Email:           "sagar@test.com",
-		IsEmailVerified: true,
-	}
-	existingUser.ID = uuid.New()
-
-	otpRepo.On("FindLatestActiveByEmail", "sagar@test.com").Return(otp, nil)
-	otpRepo.On("MarkAsUsed", otp).Return(nil)
-	userRepo.On("FindByEmail", "sagar@test.com").Return(existingUser, nil)
-	tokenSvc.On("GenerateAccessToken", mock.AnythingOfType("service.TokenClaims")).Return("access-token", nil)
-	tokenSvc.On("GenerateRefreshToken").Return("raw-refresh", "hashed-refresh", nil)
-	refreshTokenRepo.On("Create", mock.AnythingOfType("*entity.RefreshToken")).Return(nil)
-
-	tokens, err := authSvc.VerifyOTP("sagar@test.com", "123456")
-
-	assert.NoError(t, err)
-	assert.NotNil(t, tokens)
-	userRepo.AssertNotCalled(t, "Create", mock.Anything)
+	otpRepo.AssertCalled(t, "MarkAsUsed", otp)
 }
 
 func TestVerifyOTP_ExpiredOTP(t *testing.T) {
@@ -165,9 +125,8 @@ func TestVerifyOTP_ExpiredOTP(t *testing.T) {
 	}
 	otpRepo.On("FindLatestActiveByEmail", "sagar@test.com").Return(otp, nil)
 
-	tokens, err := authSvc.VerifyOTP("sagar@test.com", "123456")
+	err := authSvc.VerifyOTP("sagar@test.com", "123456")
 
-	assert.Nil(t, tokens)
 	assert.ErrorIs(t, err, service.ErrOTPExpired)
 }
 
@@ -183,9 +142,8 @@ func TestVerifyOTP_MaxAttempts(t *testing.T) {
 	}
 	otpRepo.On("FindLatestActiveByEmail", "sagar@test.com").Return(otp, nil)
 
-	tokens, err := authSvc.VerifyOTP("sagar@test.com", "123456")
+	err := authSvc.VerifyOTP("sagar@test.com", "123456")
 
-	assert.Nil(t, tokens)
 	assert.ErrorIs(t, err, service.ErrOTPMaxAttempts)
 }
 
@@ -204,9 +162,8 @@ func TestVerifyOTP_WrongCode(t *testing.T) {
 	otpRepo.On("FindLatestActiveByEmail", "sagar@test.com").Return(otp, nil)
 	otpRepo.On("IncrementAttempts", otp).Return(nil)
 
-	tokens, err := authSvc.VerifyOTP("sagar@test.com", "000000")
+	err := authSvc.VerifyOTP("sagar@test.com", "000000")
 
-	assert.Nil(t, tokens)
 	assert.ErrorIs(t, err, service.ErrInvalidOTP)
 	otpRepo.AssertCalled(t, "IncrementAttempts", otp)
 }
@@ -216,10 +173,31 @@ func TestVerifyOTP_NoActiveOTP(t *testing.T) {
 
 	otpRepo.On("FindLatestActiveByEmail", "sagar@test.com").Return(nil, gorm.ErrRecordNotFound)
 
-	tokens, err := authSvc.VerifyOTP("sagar@test.com", "123456")
+	err := authSvc.VerifyOTP("sagar@test.com", "123456")
 
-	assert.Nil(t, tokens)
 	assert.ErrorIs(t, err, service.ErrInvalidOTP)
+}
+
+// ==================== GenerateTokens Tests ====================
+
+func TestGenerateTokens_Success(t *testing.T) {
+	authSvc, _, _, refreshTokenRepo, tokenSvc, _ := newTestAuthService()
+
+	user := &entity.User{
+		Email:    "sagar@test.com",
+		Timezone: "Asia/Kolkata",
+	}
+	user.ID = uuid.New()
+
+	tokenSvc.On("GenerateAccessToken", mock.AnythingOfType("service.TokenClaims")).Return("access-token", nil)
+	tokenSvc.On("GenerateRefreshToken").Return("raw-refresh", "hashed-refresh", nil)
+	refreshTokenRepo.On("Create", mock.AnythingOfType("*entity.RefreshToken")).Return(nil)
+
+	tokens, err := authSvc.GenerateTokens(user)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "access-token", tokens.AccessToken)
+	assert.Equal(t, "raw-refresh", tokens.RefreshToken)
 }
 
 // ==================== LoginWithPassword Tests ====================
