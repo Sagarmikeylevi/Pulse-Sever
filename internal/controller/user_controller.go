@@ -19,6 +19,19 @@ func NewUserController(userService service.UserService) *UserController {
 	return &UserController{userService: userService}
 }
 
+// @Summary      Check timezone
+// @Description  Compares the detected timezone with the user's stored timezone
+// @Tags         User
+// @Accept       json
+// @Produce      json
+// @Param        request body dto.CheckTimezoneRequest true "Detected timezone"
+// @Success      200 {object} dto.CheckTimezoneResponse
+// @Failure      400 {object} dto.ErrorResponse
+// @Failure      401 {object} dto.ErrorResponse
+// @Failure      404 {object} dto.ErrorResponse
+// @Failure      500 {object} dto.ErrorResponse
+// @Security     BearerAuth
+// @Router       /user/timezone/check [post]
 func (c *UserController) CheckTimezone(ctx *gin.Context) {
 	userID, exists := ctx.Get("userID")
 	if !exists {
@@ -52,6 +65,19 @@ func (c *UserController) CheckTimezone(ctx *gin.Context) {
 	})
 }
 
+// @Summary      Update timezone
+// @Description  Updates the authenticated user's timezone
+// @Tags         User
+// @Accept       json
+// @Produce      json
+// @Param        request body dto.UpdateTimezoneRequest true "New timezone"
+// @Success      200 {object} dto.MessageResponse
+// @Failure      400 {object} dto.ErrorResponse
+// @Failure      401 {object} dto.ErrorResponse
+// @Failure      404 {object} dto.ErrorResponse
+// @Failure      500 {object} dto.ErrorResponse
+// @Security     BearerAuth
+// @Router       /user/timezone [put]
 func (c *UserController) UpdateTimezone(ctx *gin.Context) {
 	userID, exists := ctx.Get("userID")
 	if !exists {

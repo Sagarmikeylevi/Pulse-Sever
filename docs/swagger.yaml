@@ -1,0 +1,366 @@
+basePath: /api/v1
+definitions:
+  dto.AuthTokensResponse:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+    type: object
+  dto.CheckTimezoneRequest:
+    properties:
+      timezone:
+        type: string
+    required:
+    - timezone
+    type: object
+  dto.CheckTimezoneResponse:
+    properties:
+      current:
+        type: string
+      detected:
+        type: string
+      match:
+        type: boolean
+    type: object
+  dto.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  dto.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  dto.MessageResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  dto.RefreshTokenRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  dto.SendOTPRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  dto.SetPasswordRequest:
+    properties:
+      password:
+        minLength: 8
+        type: string
+    required:
+    - password
+    type: object
+  dto.UpdateTimezoneRequest:
+    properties:
+      timezone:
+        type: string
+    required:
+    - timezone
+    type: object
+  dto.ValidationErrorResponse:
+    properties:
+      errors:
+        additionalProperties:
+          type: string
+        type: object
+    type: object
+  dto.VerifyOTPRequest:
+    properties:
+      code:
+        type: string
+      email:
+        type: string
+      timezone:
+        type: string
+    required:
+    - code
+    - email
+    - timezone
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Productivity tracking backend API
+  title: Pulse API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates a user with email and password, returning auth tokens
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.AuthTokensResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ValidationErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Login
+      tags:
+      - Auth
+  /auth/otp/send:
+    post:
+      consumes:
+      - application/json
+      description: Sends a 6-digit OTP code to the provided email address
+      parameters:
+      - description: Email to send OTP to
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SendOTPRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ValidationErrorResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Send OTP
+      tags:
+      - Auth
+  /auth/otp/verify:
+    post:
+      consumes:
+      - application/json
+      description: Verifies the OTP code and creates or finds the user, returning
+        auth tokens
+      parameters:
+      - description: Email, OTP code, and timezone
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.VerifyOTPRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.AuthTokensResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Verify OTP
+      tags:
+      - Auth
+  /auth/password/set:
+    post:
+      consumes:
+      - application/json
+      description: Sets the password for the authenticated user
+      parameters:
+      - description: New password (min 8 characters)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ValidationErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Set password
+      tags:
+      - Auth
+  /auth/token/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Exchanges a valid refresh token for a new access/refresh token
+        pair
+      parameters:
+      - description: Refresh token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.AuthTokensResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ValidationErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Refresh token
+      tags:
+      - Auth
+  /user/timezone:
+    put:
+      consumes:
+      - application/json
+      description: Updates the authenticated user's timezone
+      parameters:
+      - description: New timezone
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateTimezoneRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update timezone
+      tags:
+      - User
+  /user/timezone/check:
+    post:
+      consumes:
+      - application/json
+      description: Compares the detected timezone with the user's stored timezone
+      parameters:
+      - description: Detected timezone
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CheckTimezoneRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CheckTimezoneResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Check timezone
+      tags:
+      - User
+securityDefinitions:
+  BearerAuth:
+    description: Enter "Bearer <your_token>"
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
