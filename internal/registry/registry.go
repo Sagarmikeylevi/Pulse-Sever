@@ -34,7 +34,7 @@ func Setup(db *gorm.DB, cfg *shared.Config) *gin.Engine {
 	userController := controller.NewUserController(userService)
 
 	// Router
-	router := routes.SetupRouter(authController, userController, tokenService)
+	router := routes.SetupRouter(authController, userController, tokenService, cfg.App.Env)
 
 	return router
 }

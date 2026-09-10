@@ -20,6 +20,17 @@ func NewAuthController(authService service.AuthService, userService service.User
 	return &AuthController{authService: authService, userService: userService}
 }
 
+// @Summary      Send OTP
+// @Description  Sends a 6-digit OTP code to the provided email address
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request body dto.SendOTPRequest true "Email to send OTP to"
+// @Success      200 {object} dto.MessageResponse
+// @Failure      400 {object} dto.ValidationErrorResponse
+// @Failure      429 {object} dto.ErrorResponse
+// @Failure      500 {object} dto.ErrorResponse
+// @Router       /auth/otp/send [post]
 func (c *AuthController) SendOTP(ctx *gin.Context) {
 	var req dto.SendOTPRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -40,6 +51,18 @@ func (c *AuthController) SendOTP(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, dto.MessageResponse{Message: "OTP sent successfully"})
 }
 
+// @Summary      Verify OTP
+// @Description  Verifies the OTP code and creates or finds the user, returning auth tokens
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request body dto.VerifyOTPRequest true "Email, OTP code, and timezone"
+// @Success      200 {object} dto.AuthTokensResponse
+// @Failure      400 {object} dto.ErrorResponse
+// @Failure      401 {object} dto.ErrorResponse
+// @Failure      429 {object} dto.ErrorResponse
+// @Failure      500 {object} dto.ErrorResponse
+// @Router       /auth/otp/verify [post]
 func (c *AuthController) VerifyOTP(ctx *gin.Context) {
 	var req dto.VerifyOTPRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -87,6 +110,17 @@ func (c *AuthController) VerifyOTP(ctx *gin.Context) {
 	})
 }
 
+// @Summary      Login
+// @Description  Authenticates a user with email and password, returning auth tokens
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request body dto.LoginRequest true "Login credentials"
+// @Success      200 {object} dto.AuthTokensResponse
+// @Failure      400 {object} dto.ValidationErrorResponse
+// @Failure      401 {object} dto.ErrorResponse
+// @Failure      500 {object} dto.ErrorResponse
+// @Router       /auth/login [post]
 func (c *AuthController) Login(ctx *gin.Context) {
 	var req dto.LoginRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -113,6 +147,18 @@ func (c *AuthController) Login(ctx *gin.Context) {
 	})
 }
 
+// @Summary      Set password
+// @Description  Sets the password for the authenticated user
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request body dto.SetPasswordRequest true "New password (min 8 characters)"
+// @Success      200 {object} dto.MessageResponse
+// @Failure      400 {object} dto.ValidationErrorResponse
+// @Failure      401 {object} dto.ErrorResponse
+// @Failure      500 {object} dto.ErrorResponse
+// @Security     BearerAuth
+// @Router       /auth/password/set [post]
 func (c *AuthController) SetPassword(ctx *gin.Context) {
 	userID, exists := ctx.Get("userID")
 	if !exists {
@@ -134,6 +180,17 @@ func (c *AuthController) SetPassword(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, dto.MessageResponse{Message: "password set successfully"})
 }
 
+// @Summary      Refresh token
+// @Description  Exchanges a valid refresh token for a new access/refresh token pair
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request body dto.RefreshTokenRequest true "Refresh token"
+// @Success      200 {object} dto.AuthTokensResponse
+// @Failure      400 {object} dto.ValidationErrorResponse
+// @Failure      401 {object} dto.ErrorResponse
+// @Failure      500 {object} dto.ErrorResponse
+// @Router       /auth/token/refresh [post]
 func (c *AuthController) RefreshToken(ctx *gin.Context) {
 	var req dto.RefreshTokenRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {

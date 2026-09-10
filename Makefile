@@ -1,5 +1,9 @@
+## docs: Generate swagger documentation
+docs:
+	swag init -g cmd/api/main.go -o docs
+
 ## run: Start the server (migrations run automatically on startup)
-run:
+run: docs
 	go run cmd/api/main.go serve
 
 ## test: Run all tests
