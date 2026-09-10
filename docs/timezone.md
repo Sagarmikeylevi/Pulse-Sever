@@ -22,6 +22,12 @@ We store `"Asia/Kolkata"`, not `"+05:30"`. UTC offsets change with DST — `"Ame
 
 All timezone strings are validated server-side using Go's `time.LoadLocation()`. Invalid IANA names are rejected. The `time/tzdata` package is embedded in the binary for portability in containerized environments where the OS may lack timezone data.
 
+### IANA alias normalization
+
+Different devices may send different IANA names for the same timezone (e.g., `Asia/Calcutta` vs `Asia/Kolkata`). To avoid false mismatches, all incoming timezones are normalized to their canonical IANA name before storing or comparing. This happens in `shared.NormalizeTimezone()`, which is called at every entry point — signup, check, and update.
+
+A known alias map (`internal/shared/timezone.go`) covers common legacy names. If a timezone is valid but not in the map, it's stored as-is. Pre-existing rows from before normalization was added are not retroactively updated — they get corrected when the user next confirms a timezone update.
+
 ### Historical data integrity
 
 When a user changes timezone, past task logs are NOT retroactively adjusted. A task logged on `2026-09-05` stays on that date regardless of future timezone changes. Only future date calculations use the new timezone.
@@ -42,5 +48,6 @@ The user must explicitly confirm to update their timezone — the server never c
 | Date goes backward on change | Already-logged tasks keep their date. User gets extra time on the "old" day. No data loss. |
 | Date goes forward on change | Incomplete tasks for the skipped period become candidates for auto-failed. Same as if user didn't open the app. |
 | DST transition | Handled automatically by IANA timezone names |
+| Legacy IANA alias (e.g., `Asia/Calcutta`) | Normalized to canonical name (`Asia/Kolkata`) before storing or comparing |
 | Missing timezone on signup | Rejected — timezone is required |
 | Invalid timezone string | Rejected — validated via `time.LoadLocation()` |
