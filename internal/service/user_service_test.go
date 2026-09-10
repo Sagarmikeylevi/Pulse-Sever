@@ -74,6 +74,18 @@ func TestFindOrCreateByEmail_ExistingUser_MarksEmailVerified(t *testing.T) {
 	userRepo.AssertCalled(t, "MarkEmailVerified", unverifiedUser.ID)
 }
 
+func TestFindOrCreateByEmail_NormalizesLegacyTimezone(t *testing.T) {
+	userSvc, userRepo := newTestUserService()
+
+	userRepo.On("FindByEmail", "sagar@test.com").Return(nil, gorm.ErrRecordNotFound)
+	userRepo.On("Create", mock.AnythingOfType("*entity.User")).Return(nil)
+
+	user, err := userSvc.FindOrCreateByEmail("sagar@test.com", "Asia/Calcutta")
+
+	assert.NoError(t, err)
+	assert.Equal(t, "Asia/Kolkata", user.Timezone)
+}
+
 func TestFindOrCreateByEmail_InvalidTimezone(t *testing.T) {
 	userSvc, userRepo := newTestUserService()
 
@@ -130,6 +142,26 @@ func TestCheckTimezone_Mismatch(t *testing.T) {
 	assert.Equal(t, "America/New_York", result.Detected)
 }
 
+func TestCheckTimezone_AliasMatch(t *testing.T) {
+	userSvc, userRepo := newTestUserService()
+
+	userID := uuid.New()
+	user := &entity.User{
+		Email:    "sagar@test.com",
+		Timezone: "Asia/Kolkata",
+	}
+	user.ID = userID
+
+	userRepo.On("FindByID", userID).Return(user, nil)
+
+	result, err := userSvc.CheckTimezone(userID, "Asia/Calcutta")
+
+	assert.NoError(t, err)
+	assert.True(t, result.Match)
+	assert.Equal(t, "Asia/Kolkata", result.Current)
+	assert.Equal(t, "Asia/Kolkata", result.Detected)
+}
+
 func TestCheckTimezone_InvalidTimezone(t *testing.T) {
 	userSvc, _ := newTestUserService()
 
@@ -169,6 +201,25 @@ func TestUpdateTimezone_Success(t *testing.T) {
 	userRepo.On("UpdateTimezone", userID, "America/New_York").Return(nil)
 
 	err := userSvc.UpdateTimezone(userID, "America/New_York")
+
+	assert.NoError(t, err)
+	userRepo.AssertCalled(t, "UpdateTimezone", userID, "America/New_York")
+}
+
+func TestUpdateTimezone_NormalizesLegacyTimezone(t *testing.T) {
+	userSvc, userRepo := newTestUserService()
+
+	userID := uuid.New()
+	user := &entity.User{
+		Email:    "sagar@test.com",
+		Timezone: "Asia/Kolkata",
+	}
+	user.ID = userID
+
+	userRepo.On("FindByID", userID).Return(user, nil)
+	userRepo.On("UpdateTimezone", userID, "America/New_York").Return(nil)
+
+	err := userSvc.UpdateTimezone(userID, "US/Eastern")
 
 	assert.NoError(t, err)
 	userRepo.AssertCalled(t, "UpdateTimezone", userID, "America/New_York")
