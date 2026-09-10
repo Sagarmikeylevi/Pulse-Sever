@@ -3,10 +3,10 @@ package service
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/Sagarmikeylevi/Pulse-Sever/internal/entity"
 	"github.com/Sagarmikeylevi/Pulse-Sever/internal/repository"
+	"github.com/Sagarmikeylevi/Pulse-Sever/internal/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -37,15 +37,16 @@ func NewUserService(userRepo repository.UserRepository) UserService {
 }
 
 func (s *userService) FindOrCreateByEmail(email string, timezone string) (*entity.User, error) {
-	if err := validateTimezone(timezone); err != nil {
-		return nil, err
+	normalizedTz, err := shared.NormalizeTimezone(timezone)
+	if err != nil {
+		return nil, ErrInvalidTimezone
 	}
 	user, err := s.userRepo.FindByEmail(email)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		user = &entity.User{
 			Email:           email,
 			IsEmailVerified: true,
-			Timezone:        timezone,
+			Timezone:        normalizedTz,
 		}
 		if err := s.userRepo.Create(user); err != nil {
 			return nil, fmt.Errorf("failed to create user: %w", err)
@@ -64,8 +65,9 @@ func (s *userService) FindOrCreateByEmail(email string, timezone string) (*entit
 }
 
 func (s *userService) CheckTimezone(userID uuid.UUID, detectedTimezone string) (*TimezoneCheckResult, error) {
-	if err := validateTimezone(detectedTimezone); err != nil {
-		return nil, err
+	normalizedTz, err := shared.NormalizeTimezone(detectedTimezone)
+	if err != nil {
+		return nil, ErrInvalidTimezone
 	}
 
 	user, err := s.userRepo.FindByID(userID)
@@ -74,30 +76,22 @@ func (s *userService) CheckTimezone(userID uuid.UUID, detectedTimezone string) (
 	}
 
 	return &TimezoneCheckResult{
-		Match:    user.Timezone == detectedTimezone,
+		Match:    user.Timezone == normalizedTz,
 		Current:  user.Timezone,
-		Detected: detectedTimezone,
+		Detected: normalizedTz,
 	}, nil
 }
 
 func (s *userService) UpdateTimezone(userID uuid.UUID, timezone string) error {
-	if err := validateTimezone(timezone); err != nil {
-		return err
+	normalizedTz, err := shared.NormalizeTimezone(timezone)
+	if err != nil {
+		return ErrInvalidTimezone
 	}
 
-	_, err := s.userRepo.FindByID(userID)
+	_, err = s.userRepo.FindByID(userID)
 	if err != nil {
 		return ErrUserNotFound
 	}
 
-	return s.userRepo.UpdateTimezone(userID, timezone)
-}
-
-// Helper function to validate timezone
-func validateTimezone(tz string) error {
-	_, err := time.LoadLocation(tz)
-	if err != nil {
-		return ErrInvalidTimezone
-	}
-	return nil
+	return s.userRepo.UpdateTimezone(userID, normalizedTz)
 }
