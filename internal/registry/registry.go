@@ -15,11 +15,14 @@ func Setup(db *gorm.DB, cfg *shared.Config) *gin.Engine {
 	userRepo := repository.NewUserRepository(db)
 	otpRepo := repository.NewOTPRepository(db)
 	refreshTokenRepo := repository.NewRefreshTokenRepository(db)
+	taskRepo := repository.NewTaskRepository(db)
+	taskLogRepo := repository.NewTaskLogRepository(db)
 
 	// Services
 	tokenService := service.NewTokenService(cfg.JWT)
 	emailService := service.NewEmailService(cfg.App.Env)
 	userService := service.NewUserService(userRepo)
+	taskService := service.NewTaskService(taskRepo, taskLogRepo, userRepo)
 	authService := service.NewAuthService(
 		userRepo,
 		otpRepo,
@@ -32,9 +35,10 @@ func Setup(db *gorm.DB, cfg *shared.Config) *gin.Engine {
 	// Controllers
 	authController := controller.NewAuthController(authService, userService)
 	userController := controller.NewUserController(userService)
+	taskController := controller.NewTaskController(taskService)
 
 	// Router
-	router := routes.SetupRouter(authController, userController, tokenService, cfg.App.Env)
+	router := routes.SetupRouter(authController, userController, taskController, tokenService, cfg.App.Env)
 
 	return router
 }

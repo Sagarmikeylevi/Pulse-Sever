@@ -23,10 +23,47 @@ definitions:
       match:
         type: boolean
     type: object
+  dto.CreateTaskRequest:
+    properties:
+      is_daily:
+        type: boolean
+      recurrence_days:
+        items:
+          type: integer
+        type: array
+      title:
+        maxLength: 255
+        minLength: 1
+        type: string
+      type:
+        enum:
+        - recurring
+        - check_in
+        type: string
+    required:
+    - title
+    - type
+    type: object
   dto.ErrorResponse:
     properties:
       error:
         type: string
+    type: object
+  dto.LogTaskRequest:
+    properties:
+      notes:
+        type: string
+      rating:
+        enum:
+        - rest
+        - rough
+        - okay
+        - good
+        - crushed_it
+        - done
+        type: string
+    required:
+    - rating
     type: object
   dto.LoginRequest:
     properties:
@@ -64,6 +101,87 @@ definitions:
         type: string
     required:
     - password
+    type: object
+  dto.TaskLogResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      log_date:
+        type: string
+      notes:
+        type: string
+      rating:
+        type: string
+      task_id:
+        type: string
+    type: object
+  dto.TaskResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      is_daily:
+        type: boolean
+      recurrence_days:
+        items:
+          type: integer
+        type: array
+      target_date:
+        type: string
+      title:
+        type: string
+      type:
+        type: string
+    type: object
+  dto.TaskWithLogResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      is_daily:
+        type: boolean
+      log:
+        $ref: '#/definitions/dto.TaskLogResponse'
+      recurrence_days:
+        items:
+          type: integer
+        type: array
+      target_date:
+        type: string
+      title:
+        type: string
+      type:
+        type: string
+    type: object
+  dto.TodayResponse:
+    properties:
+      check_ins:
+        items:
+          $ref: '#/definitions/dto.TaskWithLogResponse'
+        type: array
+      date:
+        type: string
+      recurring_tasks:
+        items:
+          $ref: '#/definitions/dto.TaskWithLogResponse'
+        type: array
+    type: object
+  dto.UpdateTaskRequest:
+    properties:
+      is_daily:
+        type: boolean
+      recurrence_days:
+        items:
+          type: integer
+        type: array
+      title:
+        maxLength: 255
+        minLength: 1
+        type: string
     type: object
   dto.UpdateTimezoneRequest:
     properties:
@@ -277,6 +395,287 @@ paths:
       summary: Refresh token
       tags:
       - Auth
+  /tasks:
+    get:
+      description: Lists all tasks for the authenticated user, optionally filtered
+        by type
+      parameters:
+      - description: Filter by task type
+        enum:
+        - recurring
+        - check_in
+        in: query
+        name: type
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.TaskResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List tasks
+      tags:
+      - Tasks
+    post:
+      consumes:
+      - application/json
+      description: Creates a new recurring task or daily check-in
+      parameters:
+      - description: Task details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.TaskResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create task
+      tags:
+      - Tasks
+  /tasks/{id}:
+    delete:
+      description: Soft deletes a task
+      parameters:
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete task
+      tags:
+      - Tasks
+    get:
+      description: Returns a single task by ID
+      parameters:
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.TaskResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get task
+      tags:
+      - Tasks
+    put:
+      consumes:
+      - application/json
+      description: Updates a task's title or recurrence schedule
+      parameters:
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.TaskResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update task
+      tags:
+      - Tasks
+  /tasks/{id}/logs:
+    get:
+      description: Returns the full log history for a task
+      parameters:
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.TaskLogResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get task logs
+      tags:
+      - Task Logs
+    post:
+      consumes:
+      - application/json
+      description: Creates or updates a rating for a task for today (upsert)
+      parameters:
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Log details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LogTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.TaskLogResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Log task
+      tags:
+      - Task Logs
+  /tasks/today:
+    get:
+      description: Returns recurring tasks scheduled for today and today's check-ins
+        with log status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.TodayResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get today's tasks
+      tags:
+      - Tasks
   /user/timezone:
     put:
       consumes:

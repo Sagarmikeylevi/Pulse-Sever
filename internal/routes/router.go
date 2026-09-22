@@ -11,7 +11,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-func SetupRouter(authController *controller.AuthController, userController *controller.UserController, tokenService service.TokenService, appEnv string) *gin.Engine {
+func SetupRouter(authController *controller.AuthController, userController *controller.UserController, taskController *controller.TaskController, tokenService service.TokenService, appEnv string) *gin.Engine {
 	router := gin.Default()
 
 	router.Use(cors.New(cors.Config{
@@ -29,6 +29,7 @@ func SetupRouter(authController *controller.AuthController, userController *cont
 
 	RegisterAuthRoutes(api, authController, tokenService)
 	RegisterUserRoutes(api, userController, tokenService)
+	RegisterTaskRoutes(api, taskController, tokenService)
 
 	return router
 }
